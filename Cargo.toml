@@ -7,3 +7,6 @@ anyhow = "1.0.42"
 prost = "0.12.6"
 prost-build = "0.12.6"
 prost-types = "0.12.6"
+tonic = { version = "0.11.0", features = ["zstd", "tls"] }
+tonic-build = "0.11.0"
+tokio = { version = "1.37.0", features = ["rt", "rt-multi-thread", "macros"] }
