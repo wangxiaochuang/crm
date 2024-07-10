@@ -1,0 +1,3 @@
+server:
+  port: 50001
+  db_url: postgres://postgres:postgres@localhost:5432/stats

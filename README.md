@@ -1,117 +1,91 @@
 # rust template
 
-## 环境设置
+## env
 
-### 安装 Rust
+proto提醒错误，设置vscode配置
 
-```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```json
+"protoc": {
+    "options": [
+        "--proto_path=protos",
+    ],
+},
 ```
 
-### 安装 VSCode 插件
+## postgres
 
-- crates: Rust 包管理
-- Even Better TOML: TOML 文件支持
-- Better Comments: 优化注释显示
-- Error Lens: 错误提示优化
-- GitLens: Git 增强
-- Github Copilot: 代码提示
-- indent-rainbow: 缩进显示优化
-- Prettier - Code formatter: 代码格式化
-- REST client: REST API 调试
-- rust-analyzer: Rust 语言支持
-- Rust Test lens: Rust 测试支持
-- Rust Test Explorer: Rust 测试概览
-- TODO Highlight: TODO 高亮
-- vscode-icons: 图标优化
-- YAML: YAML 文件支持
+### install
 
-### 安装 cargo generate
-
-cargo generate 是一个用于生成项目模板的工具。它可以使用已有的 github repo 作为模版生成新的项目。
-
-```bash
-cargo install cargo-generate
+```
+pip install pgcli
+cargo install sqlx-cli --no-default-features --features rustls --features postgres
 ```
 
-新的项目使用 `wangxiaochuang/rustpl` 模版生成基本的代码：
+进入指定库
 
-```bash
-cargo generate wangxiaochuang/rustpl
+```sh
+pgcli -h 127.0.0.1 -U postgres stats
 ```
 
-### 安装 pre-commit
+创建、删除库
 
-pre-commit 是一个代码检查工具，可以在提交代码前进行代码检查。
-
-```bash
-pipx install pre-commit
-# 实际应用pre-commit
-pre-commit install
+```sh
+sqlx database drop -D postgres://postgres:postgres@127.0.0.1/stats
+sqlx database create -D postgres://postgres:postgres@127.0.0.1/stats
 ```
 
-### 安装 Cargo deny
+创建迁移文件
 
-Cargo deny 是一个 Cargo 插件，可以用于检查依赖的安全性。
+```sh
+sqlx migrate add initial
 
-```bash
-cargo install --locked cargo-deny
-
-# 获取最新的规则
-cargo deny fetch
 ```
 
-### 安装 typos
+执行迁移文件
 
-typos 是一个拼写检查工具。
-
-```bash
-cargo install typos-cli
+```sh
+# 执行后，会在chat下创建一个名为_sqlx_migrations的表，记录了迁移的内容，多次执行不会有变化，如果文件改变会报错
+# echo DATABASE_URL=postgres://postgres:postgres@127.0.0.1/chat > .env
+# sqlx migrate run
+sqlx migrate run -D postgres://postgres:postgres@127.0.0.1/stats
 ```
 
-### 安装 git cliff
+### 常见语法
 
-git cliff 是一个生成 changelog 的工具。
+创建数组字段
 
-```bash
-cargo install git-cliff
+```sql
+CREATE TABLE user_stats(
+    ...
+    recent_watched int[],
+    ...
+)
 ```
 
-安装完后修改postprocessors,设置正确的的repo
+插入数组字段
 
-### 安装 cargo nextest
-
-cargo nextest 是一个 Rust 增强测试工具。
-
-```bash
-cargo install cargo-nextest --locked
-
-# 运行测试
-cargo nextest run
+```sql
+insert into user_stats(recent_watched) values(array[1,2,3]::int[]);
 ```
 
-### 代码commit规范
+添加某个元素是否在数组中作为条件
 
-commit message 格式
-```txt
-<type>(<scope>): <subject>
-
-type: 必填,允许的标识
-    feature: 新功能
-    fix/to: 修复bug,fix为最后一次提交,to为问题解决前的多次提交
-    docs: 文档更新
-    refactor: 重构,既不新增功能,也不修改bug
-    perf: 优化,比如性能体验等
-    test: 增加测试
-    chore: 构建工具或辅助工具的变动
-    merge: 代码合并
-scope: 可选,说明commit影响的范围,名称自定义,影响多个可使用*
-subject: commit目的的简短描述,不超过50个字符
+```sql
+select name, email from user_stats where created_at > CURRENT_TIMESTAMP - in
+ terval '100 days' and 164316 = any(recent_watched);
+-- 或者 判断多个元素是否在某个字段内
+select name, email from user_stats where created_at > CURRENT_TIMESTAMP - in
+ terval '100 days' and array[164316] <@ recent_watched;
 ```
 
-例如下面的提交样例
+时间比较子句
+```sql
+select count(*) from user_stats where created_at > CURRENT_TIMESTAMP - inter
+ val '100 days';
+```
 
-```txt
-fix(DAO): 用户查询缺少username属性
-feature(Controller): 用户查询接口开发
+查看sql执行计划
+
+```sql
+explain SQL SENTENCE;
 ```
