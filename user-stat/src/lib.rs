@@ -11,7 +11,7 @@ use pb::{
     QueryRequest, RawQueryRequest, User,
 };
 use sqlx::PgPool;
-use tonic::{async_trait, Request, Response, Status};
+use tonic::{async_trait, Request, Response, Result, Status};
 
 pub struct UserStatsService {
     inner: Arc<UserStatsServiceInner>,
@@ -23,8 +23,8 @@ pub struct UserStatsServiceInner {
     pool: PgPool,
 }
 
-type ServiceResult<T> = Result<Response<T>, Status>;
-type ResponseStream = Pin<Box<dyn Stream<Item = Result<User, Status>> + Send>>;
+type ServiceResult<T> = Result<Response<T>>;
+type ResponseStream = Pin<Box<dyn Stream<Item = Result<User>> + Send>>;
 
 #[async_trait]
 impl UserStats for UserStatsService {
@@ -33,7 +33,18 @@ impl UserStats for UserStatsService {
 
     async fn query(&self, request: Request<QueryRequest>) -> ServiceResult<Self::QueryStream> {
         let query = request.into_inner();
-        self.query(query).await
+        // method 1: self.query(query).await
+        // method 2: self.query(query)
+        //     .await
+        //     .map(|ret| Response::new(Box::pin(futures::stream::iter(ret.into_iter().map(Ok)))))
+        //     .map_err(|e| Status::internal(e.to_string()))
+        // method 3:
+        match self.query(query).await {
+            Ok(ret) => Ok(Response::new(Box::pin(futures::stream::iter(
+                ret.into_iter().map(Ok),
+            )))),
+            Err(e) => Err(Status::internal(e.to_string())),
+        }
     }
 
     async fn raw_query(
@@ -41,7 +52,13 @@ impl UserStats for UserStatsService {
         request: Request<RawQueryRequest>,
     ) -> ServiceResult<Self::RawQueryStream> {
         let query = request.into_inner();
-        self.raw_query(query).await
+        // self.raw_query(query).await
+        match self.raw_query(query).await {
+            Ok(ret) => Ok(Response::new(Box::pin(futures::stream::iter(
+                ret.into_iter().map(Ok),
+            )))),
+            Err(e) => Err(Status::internal(e.to_string())),
+        }
     }
 }
 

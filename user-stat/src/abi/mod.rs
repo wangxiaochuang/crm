@@ -1,15 +1,15 @@
+use anyhow::{anyhow, Result};
 use chrono::{DateTime, TimeZone, Utc};
 use itertools::Itertools;
 use prost_types::Timestamp;
-use tonic::{Response, Status};
 
 use crate::{
     pb::{QueryRequest, RawQueryRequest, User},
-    ResponseStream, ServiceResult, UserStatsService,
+    UserStatsService,
 };
 
 impl UserStatsService {
-    pub async fn query(&self, query: QueryRequest) -> ServiceResult<ResponseStream> {
+    pub async fn query(&self, query: QueryRequest) -> Result<Vec<User>> {
         let mut sql = "SELECT email, name FROM user_stats WHERE ".to_string();
 
         let time_conditions = query
@@ -31,19 +31,27 @@ impl UserStatsService {
         self.raw_query(RawQueryRequest { query: sql }).await
     }
 
-    pub async fn raw_query(&self, req: RawQueryRequest) -> ServiceResult<ResponseStream> {
+    pub async fn raw_query(&self, req: RawQueryRequest) -> Result<Vec<User>> {
         let Ok(ret) = sqlx::query_as::<_, User>(&req.query)
             .fetch_all(&self.inner.pool)
             .await
         else {
-            return Err(Status::internal(format!(
+            // return Err(Status::internal(format!(
+            //     "Failed to fetch data with query: {}",
+            //     req.query
+            // )));
+            return Err(anyhow!(format!(
                 "Failed to fetch data with query: {}",
                 req.query
             )));
         };
-        Ok(Response::new(Box::pin(futures::stream::iter(
-            ret.into_iter().map(Ok),
-        ))))
+        // method 1:
+        // Ok(Response::new(Box::pin(futures::stream::iter(
+        //     ret.into_iter().map(Ok),
+        // ))))
+        // method 2:
+        // method 3:
+        Ok(ret)
     }
 }
 
