@@ -7,7 +7,7 @@ use std::{ops::Deref, pin::Pin, sync::Arc};
 
 use abi::dummy_send;
 pub use config::AppConfig;
-use futures::Stream;
+use futures::{Stream, TryStreamExt};
 use pb::{
     notification_server::{Notification, NotificationServer},
     send_request::Msg,
@@ -37,9 +37,13 @@ impl Notification for NotificationService {
     async fn send(
         &self,
         request: Request<Streaming<SendRequest>>,
-    ) -> Result<Response<Self::SendStream>, Status> {
+    ) -> ServiceResult<Self::SendStream> {
         let stream = request.into_inner();
-        self.send(stream).await
+        Ok(Response::new(Box::pin(
+            self.send(stream.map_err(|status| anyhow::anyhow!(status.to_string())))
+                .await
+                .map_err(|e| Status::internal(e.to_string())),
+        )))
     }
 }
 

@@ -1,5 +1,4 @@
-use tonic::{Result as TonicResult, Status};
-use tracing::warn;
+use anyhow::Result;
 
 use crate::{
     pb::{send_request::Msg, InAppMessage, SendRequest, SendResponse},
@@ -9,12 +8,9 @@ use crate::{
 use super::{to_ts, Sender};
 
 impl Sender for InAppMessage {
-    async fn send(self, svc: NotificationService) -> TonicResult<SendResponse> {
+    async fn send(self, svc: NotificationService) -> Result<SendResponse> {
         let message_id = self.message_id.clone();
-        svc.sender.send(Msg::InApp(self)).await.map_err(|e| {
-            warn!("Failed to send message: {:?}", e);
-            Status::internal("Failed to send message")
-        })?;
+        svc.sender.send(Msg::InApp(self)).await?;
         Ok(SendResponse {
             message_id,
             timestamp: Some(to_ts()),

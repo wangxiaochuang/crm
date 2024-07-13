@@ -2,23 +2,23 @@ mod email;
 mod in_app;
 mod sms;
 
+use anyhow::Result as MyResult;
+use anyhow::Result;
 use chrono::Utc;
 use futures::{Stream, StreamExt};
 use prost_types::Timestamp;
 use std::time::Duration;
 use tokio::{sync::mpsc, time::sleep};
 use tokio_stream::wrappers::ReceiverStream;
-use tonic::Result as TonicResult;
-use tonic::{Response, Status};
 use tracing::{info, warn};
 
 use crate::{
     pb::{send_request::Msg, SendRequest, SendResponse},
-    NotificationService, ResponseStream, ServiceResult,
+    NotificationService,
 };
 
 pub trait Sender {
-    async fn send(self, svc: NotificationService) -> TonicResult<SendResponse>;
+    async fn send(self, svc: NotificationService) -> MyResult<SendResponse>;
 }
 
 const CHANNEL_SIZE: usize = 1024;
@@ -26,8 +26,8 @@ const CHANNEL_SIZE: usize = 1024;
 impl NotificationService {
     pub async fn send(
         &self,
-        mut stream: impl Stream<Item = Result<SendRequest, Status>> + Send + 'static + Unpin,
-    ) -> ServiceResult<ResponseStream> {
+        mut stream: impl Stream<Item = Result<SendRequest>> + Send + 'static + Unpin,
+    ) -> impl Stream<Item = Result<SendResponse>> {
         let (tx, rx) = mpsc::channel(CHANNEL_SIZE);
         let notif = self.clone();
         tokio::spawn(async move {
@@ -39,15 +39,14 @@ impl NotificationService {
                     Some(Msg::InApp(in_app)) => in_app.send(notif_clone).await,
                     None => {
                         warn!("Invalid request");
-                        Err(Status::invalid_argument("Invalid request"))
+                        Err(anyhow::anyhow!("Invalid request"))
                     }
                 };
                 tx.send(res).await.unwrap();
             }
         });
 
-        let stream = ReceiverStream::new(rx);
-        Ok(Response::new(Box::pin(stream)))
+        ReceiverStream::new(rx)
     }
 }
 
@@ -89,8 +88,8 @@ mod tests {
             Ok(SmsMessage::fake().into()),
             Ok(InAppMessage::fake().into()),
         ]);
-        let response = service.send(stream).await?;
-        let ret = response.into_inner().collect::<Vec<_>>().await;
+        let response = service.send(stream).await;
+        let ret = response.collect::<Vec<_>>().await;
         assert_eq!(ret.len(), 3);
         Ok(())
     }

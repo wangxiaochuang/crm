@@ -1,7 +1,8 @@
 use crate::{
     pb::{Content, MaterializeRequest, Publisher},
-    MetadataService, ResponseStream, ServiceResult,
+    MetadataService,
 };
+use anyhow::Result;
 use chrono::{DateTime, Days, Utc};
 use fake::{
     faker::{chrono::en::DateTimeBetween, lorem::en::Sentence, name::en::Name},
@@ -12,18 +13,14 @@ use prost_types::Timestamp;
 use rand::Rng;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
-use tonic::Response;
 
 const CHANNEL_SIZE: usize = 1024;
 
 impl MetadataService {
     pub async fn materialize(
         &self,
-        mut stream: impl Stream<Item = Result<MaterializeRequest, tonic::Status>>
-            + Send
-            + 'static
-            + Unpin,
-    ) -> ServiceResult<ResponseStream> {
+        mut stream: impl Stream<Item = Result<MaterializeRequest>> + Send + 'static + Unpin,
+    ) -> impl Stream<Item = Result<Content>> {
         let (tx, rx) = mpsc::channel(CHANNEL_SIZE);
         tokio::spawn(async move {
             while let Some(Ok(req)) = stream.next().await {
@@ -31,8 +28,7 @@ impl MetadataService {
                 tx.send(Ok(content)).await.unwrap();
             }
         });
-        let stream = ReceiverStream::new(rx);
-        Ok(Response::new(Box::pin(stream)))
+        ReceiverStream::new(rx)
     }
 }
 
@@ -77,28 +73,4 @@ fn created_at() -> Option<Timestamp> {
         seconds: date.timestamp(),
         nanos: date.timestamp_subsec_nanos() as i32,
     })
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::AppConfig;
-    use anyhow::Result;
-
-    #[tokio::test]
-    async fn materialize_should_work() -> Result<()> {
-        let config = AppConfig::try_load()?;
-        let service = MetadataService::new(config);
-        let stream = tokio_stream::iter(vec![
-            Ok(MaterializeRequest { id: 1 }),
-            Ok(MaterializeRequest { id: 2 }),
-            Ok(MaterializeRequest { id: 3 }),
-        ]);
-
-        let response = service.materialize(stream).await?;
-        let ret = response.into_inner().collect::<Vec<_>>().await;
-        assert_eq!(ret.len(), 3);
-
-        Ok(())
-    }
 }

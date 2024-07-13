@@ -4,13 +4,14 @@ mod abi;
 mod config;
 pub mod pb;
 
+use anyhow::anyhow;
 pub use config::AppConfig;
-use futures::Stream;
+use futures::{Stream, TryStreamExt};
 use pb::{
     metadata_server::{Metadata, MetadataServer},
     Content, MaterializeRequest,
 };
-use tonic::{async_trait, Request, Response, Result, Streaming};
+use tonic::{async_trait, Request, Response, Result, Status, Streaming};
 
 pub struct MetadataService {
     inner: Arc<MetadataServiceInner>,
@@ -31,7 +32,10 @@ impl Metadata for MetadataService {
         request: Request<Streaming<MaterializeRequest>>,
     ) -> ServiceResult<Self::MaterializeStream> {
         let query = request.into_inner();
-        self.materialize(query).await
+        let stream = self.materialize(query.map_err(|e| anyhow!(e))).await;
+        Ok(Response::new(Box::pin(
+            stream.map_err(|e| Status::internal(e.to_string())),
+        )))
     }
 }
 

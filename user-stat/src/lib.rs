@@ -5,7 +5,7 @@ mod config;
 pub mod pb;
 
 pub use config::AppConfig;
-use futures::Stream;
+use futures::{Stream, TryStreamExt};
 use pb::{
     user_stats_server::{UserStats, UserStatsServer},
     QueryRequest, RawQueryRequest, User,
@@ -33,16 +33,11 @@ impl UserStats for UserStatsService {
 
     async fn query(&self, request: Request<QueryRequest>) -> ServiceResult<Self::QueryStream> {
         let query = request.into_inner();
-        // method 1: self.query(query).await
-        // method 2: self.query(query)
-        //     .await
-        //     .map(|ret| Response::new(Box::pin(futures::stream::iter(ret.into_iter().map(Ok)))))
-        //     .map_err(|e| Status::internal(e.to_string()))
-        // method 3:
+
         match self.query(query).await {
-            Ok(ret) => Ok(Response::new(Box::pin(futures::stream::iter(
-                ret.into_iter().map(Ok),
-            )))),
+            Ok(stream) => Ok(Response::new(Box::pin(
+                stream.map_err(|e| Status::internal(e.to_string())),
+            ))),
             Err(e) => Err(Status::internal(e.to_string())),
         }
     }
@@ -52,11 +47,11 @@ impl UserStats for UserStatsService {
         request: Request<RawQueryRequest>,
     ) -> ServiceResult<Self::RawQueryStream> {
         let query = request.into_inner();
-        // self.raw_query(query).await
+
         match self.raw_query(query).await {
-            Ok(ret) => Ok(Response::new(Box::pin(futures::stream::iter(
-                ret.into_iter().map(Ok),
-            )))),
+            Ok(stream) => Ok(Response::new(Box::pin(
+                stream.map_err(|e| Status::internal(e.to_string())),
+            ))),
             Err(e) => Err(Status::internal(e.to_string())),
         }
     }
