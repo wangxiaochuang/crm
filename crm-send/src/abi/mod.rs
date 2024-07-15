@@ -14,29 +14,29 @@ use tracing::{info, warn};
 
 use crate::{
     pb::{send_request::Msg, SendRequest, SendResponse},
-    NotificationService,
+    AppState,
 };
 
 pub trait Sender {
-    async fn send(self, svc: NotificationService) -> MyResult<SendResponse>;
+    async fn send(self, state: AppState) -> MyResult<SendResponse>;
 }
 
 const CHANNEL_SIZE: usize = 1024;
 
-impl NotificationService {
+impl AppState {
     pub async fn send(
         &self,
         mut stream: impl Stream<Item = Result<SendRequest>> + Send + 'static + Unpin,
     ) -> impl Stream<Item = Result<SendResponse>> {
         let (tx, rx) = mpsc::channel(CHANNEL_SIZE);
-        let notif = self.clone();
+        let state = self.clone();
         tokio::spawn(async move {
             while let Some(Ok(req)) = stream.next().await {
-                let notif_clone = notif.clone();
+                let state_clone = state.clone();
                 let res = match req.msg {
-                    Some(Msg::Email(email)) => email.send(notif_clone).await,
-                    Some(Msg::Sms(sms)) => sms.send(notif_clone).await,
-                    Some(Msg::InApp(in_app)) => in_app.send(notif_clone).await,
+                    Some(Msg::Email(email)) => email.send(state_clone).await,
+                    Some(Msg::Sms(sms)) => sms.send(state_clone).await,
+                    Some(Msg::InApp(in_app)) => in_app.send(state_clone).await,
                     None => {
                         warn!("Invalid request");
                         Err(anyhow::anyhow!("Invalid request"))
@@ -82,13 +82,13 @@ mod tests {
     #[tokio::test]
     async fn send_should_work() -> Result<()> {
         let config = AppConfig::try_load()?;
-        let service = NotificationService::new(config);
+        let state = AppState::new(config);
         let stream = tokio_stream::iter(vec![
             Ok(EmailMessage::fake().into()),
             Ok(SmsMessage::fake().into()),
             Ok(InAppMessage::fake().into()),
         ]);
-        let response = service.send(stream).await;
+        let response = state.send(stream).await;
         let ret = response.collect::<Vec<_>>().await;
         assert_eq!(ret.len(), 3);
         Ok(())

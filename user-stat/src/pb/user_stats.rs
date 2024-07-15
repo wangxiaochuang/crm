@@ -8,13 +8,17 @@ pub struct User {
     #[prost(string, tag = "2")]
     pub name: ::prost::alloc::string::String,
 }
+#[derive(derive_builder::Builder)]
+#[builder(setter(into, strip_option), default)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryRequest {
     /// created_at, last_visited_at, ..
     #[prost(map = "string, message", tag = "1")]
+    #[builder(setter(each(name = "timestamp", into)))]
     pub timestamps: ::std::collections::HashMap<::prost::alloc::string::String, TimeQuery>,
     #[prost(map = "string, message", tag = "2")]
+    #[builder(setter(each(name = "id", into)))]
     pub ids: ::std::collections::HashMap<::prost::alloc::string::String, IdQuery>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -23,6 +27,8 @@ pub struct RawQueryRequest {
     #[prost(string, tag = "1")]
     pub query: ::prost::alloc::string::String,
 }
+#[derive(derive_builder::Builder)]
+#[builder(setter(into, strip_option), default)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TimeQuery {

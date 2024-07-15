@@ -17,14 +17,18 @@ use tokio::sync::mpsc;
 use tonic::{async_trait, Request, Response, Status, Streaming};
 
 #[derive(Clone)]
-pub struct NotificationService {
-    inner: Arc<NotificationServiceInner>,
+pub struct AppState {
+    inner: Arc<AppStateInner>,
 }
 
 #[allow(unused)]
-pub struct NotificationServiceInner {
+pub struct AppStateInner {
     config: AppConfig,
     sender: mpsc::Sender<Msg>,
+}
+
+pub struct NotificationService {
+    state: AppState,
 }
 
 type ServiceResult<T> = Result<Response<T>, Status>;
@@ -40,7 +44,8 @@ impl Notification for NotificationService {
     ) -> ServiceResult<Self::SendStream> {
         let stream = request.into_inner();
         Ok(Response::new(Box::pin(
-            self.send(stream.map_err(|status| anyhow::anyhow!(status.to_string())))
+            self.state
+                .send(stream.map_err(|status| anyhow::anyhow!(status.to_string())))
                 .await
                 .map_err(|e| Status::internal(e.to_string())),
         )))
@@ -48,12 +53,8 @@ impl Notification for NotificationService {
 }
 
 impl NotificationService {
-    pub fn new(config: AppConfig) -> Self {
-        let sender = dummy_send();
-        let inner = NotificationServiceInner { config, sender };
-        Self {
-            inner: Arc::new(inner),
-        }
+    pub fn new(state: AppState) -> Self {
+        Self { state }
     }
 
     pub fn into_server(self) -> NotificationServer<Self> {
@@ -61,8 +62,18 @@ impl NotificationService {
     }
 }
 
-impl Deref for NotificationService {
-    type Target = NotificationServiceInner;
+impl AppState {
+    pub fn new(config: AppConfig) -> Self {
+        let sender = dummy_send();
+        let inner = AppStateInner { config, sender };
+        Self {
+            inner: Arc::new(inner),
+        }
+    }
+}
+
+impl Deref for AppState {
+    type Target = AppStateInner;
 
     fn deref(&self) -> &Self::Target {
         &self.inner

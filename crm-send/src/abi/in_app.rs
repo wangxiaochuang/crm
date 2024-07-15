@@ -2,15 +2,15 @@ use anyhow::Result;
 
 use crate::{
     pb::{send_request::Msg, InAppMessage, SendRequest, SendResponse},
-    NotificationService,
+    AppState,
 };
 
 use super::{to_ts, Sender};
 
 impl Sender for InAppMessage {
-    async fn send(self, svc: NotificationService) -> Result<SendResponse> {
+    async fn send(self, state: AppState) -> Result<SendResponse> {
         let message_id = self.message_id.clone();
-        svc.sender.send(Msg::InApp(self)).await?;
+        state.sender.send(Msg::InApp(self)).await?;
         Ok(SendResponse {
             message_id,
             timestamp: Some(to_ts()),

@@ -4,7 +4,7 @@ use tracing::{info, level_filters::LevelFilter};
 use tracing_subscriber::{
     fmt::Layer, layer::SubscriberExt as _, util::SubscriberInitExt as _, Layer as _,
 };
-use user_stat::{AppConfig, UserStatsService};
+use user_stat::{AppConfig, AppState, UserStatsService};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -15,7 +15,9 @@ async fn main() -> Result<()> {
     let addr = format!("[::1]:{}", config.server.port).parse().unwrap();
     info!("UserService listening on {}", addr);
 
-    let svc = UserStatsService::new(config).await.into_server();
+    let state = AppState::new(config).await;
+
+    let svc = UserStatsService::new(state).into_server();
     Server::builder().add_service(svc).serve(addr).await?;
     Ok(())
 }

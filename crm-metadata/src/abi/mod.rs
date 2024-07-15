@@ -1,6 +1,6 @@
 use crate::{
     pb::{Content, MaterializeRequest, Publisher},
-    MetadataService,
+    AppState,
 };
 use anyhow::Result;
 use chrono::{DateTime, Days, Utc};
@@ -16,7 +16,7 @@ use tokio_stream::wrappers::ReceiverStream;
 
 const CHANNEL_SIZE: usize = 1024;
 
-impl MetadataService {
+impl AppState {
     pub async fn materialize(
         &self,
         mut stream: impl Stream<Item = Result<MaterializeRequest>> + Send + 'static + Unpin,
@@ -73,4 +73,32 @@ fn created_at() -> Option<Timestamp> {
         seconds: date.timestamp(),
         nanos: date.timestamp_subsec_nanos() as i32,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use std::vec;
+
+    use anyhow::Result;
+    use futures::{future, StreamExt};
+
+    use crate::{pb::MaterializeRequest, AppConfig, AppState};
+
+    #[tokio::test]
+    async fn materialize_should_work() -> Result<()> {
+        let config = AppConfig::try_load()?;
+        let state = AppState::new(config);
+        let stream = tokio_stream::iter(vec![
+            Ok(MaterializeRequest { id: 1 }),
+            Ok(MaterializeRequest { id: 2 }),
+            Ok(MaterializeRequest { id: 3 }),
+        ]);
+        let resp = state.materialize(stream).await;
+        let contents = resp
+            .filter_map(|c| future::ready(c.ok()))
+            .collect::<Vec<_>>()
+            .await;
+        assert_eq!(contents.len(), 3);
+        Ok(())
+    }
 }

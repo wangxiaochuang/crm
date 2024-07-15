@@ -2,15 +2,15 @@ use anyhow::Result;
 
 use crate::{
     pb::{send_request::Msg, EmailMessage, SendRequest, SendResponse},
-    NotificationService,
+    AppState,
 };
 
 use super::{to_ts, Sender};
 
 impl Sender for EmailMessage {
-    async fn send(self, svc: NotificationService) -> Result<SendResponse> {
+    async fn send(self, state: AppState) -> Result<SendResponse> {
         let message_id = self.message_id.clone();
-        svc.sender.send(Msg::Email(self)).await?;
+        state.sender.send(Msg::Email(self)).await?;
         Ok(SendResponse {
             message_id,
             timestamp: Some(to_ts()),

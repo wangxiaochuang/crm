@@ -50,6 +50,19 @@ sqlx migrate add initial
 sqlx migrate run -D postgres://postgres:postgres@127.0.0.1/stats
 ```
 
+拷贝指定表到另外一种表
+
+```sh
+# sql
+create table export_user_stats as select * from user_stats where created_at > '2024-01-01' limit 100;
+```
+
+dump 数据表
+
+```sh
+pg_dump --table=export_user_stats --data-only --column-inserts stats > data.sql
+```
+
 ### 常见语法
 
 创建数组字段
