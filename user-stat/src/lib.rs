@@ -18,6 +18,7 @@ pub struct AppState {
 }
 
 pub struct AppStateInner {
+    pub config: AppConfig,
     pool: PgPool,
 }
 
@@ -73,7 +74,7 @@ impl AppState {
         let pool = PgPool::connect(&config.server.db_url)
             .await
             .expect("Failed to connect to db");
-        let inner = AppStateInner { pool };
+        let inner = AppStateInner { pool, config };
         Self {
             inner: Arc::new(inner),
         }
@@ -90,11 +91,13 @@ impl Deref for AppState {
 
 #[cfg(feature = "test_utils")]
 pub mod test_util {
+    use std::io::Cursor;
     use std::path::Path;
     use std::sync::Arc;
 
     use crate::pb::IdQuery;
     use crate::pb::TimeQuery;
+    use crate::AppConfig;
     use crate::AppState;
     use crate::AppStateInner;
     use anyhow::Result;
@@ -104,18 +107,34 @@ pub mod test_util {
     use sqlx::PgPool;
     use sqlx_db_tester::TestPg;
 
+    const TEST_APP_YAML: &str = r#"
+server:
+  port: 0
+  db_url: "postgres://postgres:postgres@localhost:5432/stats"
+"#;
+    impl AppConfig {
+        pub fn try_load_for_test() -> Result<Self> {
+            let config_reader = std::io::BufReader::new(Cursor::new(TEST_APP_YAML.as_bytes()));
+            Self::load_from_reader(config_reader)
+        }
+    }
+
     impl AppState {
         pub async fn new_for_test() -> Result<(Self, sqlx_db_tester::TestPg)> {
-            let (tdb, pool) = get_test_pool().await;
+            let config = AppConfig::try_load_for_test()?;
+            let (tdb, pool) = get_test_pool(Some(&config.server.db_url)).await;
             let svc = Self {
-                inner: Arc::new(AppStateInner { pool }),
+                inner: Arc::new(AppStateInner { pool, config }),
             };
             Ok((svc, tdb))
         }
     }
 
-    pub async fn get_test_pool() -> (TestPg, PgPool) {
-        let url = "postgres://postgres:postgres@localhost:5432".to_owned();
+    pub async fn get_test_pool(url: Option<&str>) -> (TestPg, PgPool) {
+        let url = url.map_or(
+            "postgres://postgres:postgres@localhost:5432".to_owned(),
+            |url| url.rsplit_once('/').unwrap().0.to_owned(),
+        );
 
         let tdb = TestPg::new(url, Path::new("./migrations"));
         let pool = tdb.get_pool().await;

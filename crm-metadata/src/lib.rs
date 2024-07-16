@@ -18,8 +18,7 @@ pub struct AppState {
 }
 
 pub struct AppStateInner {
-    #[allow(dead_code)]
-    config: AppConfig,
+    pub config: AppConfig,
 }
 
 pub struct MetadataService {
@@ -66,5 +65,29 @@ impl Deref for AppState {
 
     fn deref(&self) -> &Self::Target {
         &self.inner
+    }
+}
+
+#[cfg(feature = "test_utils")]
+pub mod test_util {
+    use crate::{AppConfig, AppState};
+    use anyhow::Result;
+
+    const TEST_APP_YAML: &str = r#"
+server:
+  port: 0
+"#;
+    impl AppConfig {
+        pub fn try_load_for_test() -> Result<Self> {
+            let config_reader =
+                std::io::BufReader::new(std::io::Cursor::new(TEST_APP_YAML.as_bytes()));
+            Self::load_from_reader(config_reader)
+        }
+    }
+    impl AppState {
+        pub async fn new_for_test() -> Result<Self> {
+            let config = AppConfig::try_load_for_test()?;
+            Ok(Self::new(config))
+        }
     }
 }

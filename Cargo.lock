@@ -321,6 +321,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "crm-metadata",
  "derive_builder",
  "fake",
  "futures",
@@ -347,6 +348,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "crm-send",
  "derive_builder",
  "fake",
  "futures",
@@ -2473,6 +2475,7 @@ dependencies = [
  "sqlx",
  "sqlx-db-tester",
  "tokio",
+ "tokio-stream",
  "tonic",
  "tonic-build",
  "tracing",

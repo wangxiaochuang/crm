@@ -21,6 +21,8 @@ pub struct QueryRequest {
     #[builder(setter(each(name = "id", into)))]
     pub ids: ::std::collections::HashMap<::prost::alloc::string::String, IdQuery>,
 }
+#[derive(derive_builder::Builder)]
+#[builder(setter(into, strip_option), default)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RawQueryRequest {

@@ -36,3 +36,4 @@ tonic-build = { workspace = true }
 fake = { workspace = true }
 nanoid = { workspace = true }
 user-stat = { workspace = true, features = ["test_utils"] }
+tokio-stream = { workspace = true }

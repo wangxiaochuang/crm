@@ -30,3 +30,6 @@ itertools = "0.13.0"
 rand = "0.8.5"
 uuid = { version = "1.8.0", features = ["v4"] }
 user-stat = { path = "./user-stat" }
+crm-metadata = { path = "./crm-metadata" }
+crm-send = { path = "./crm-send" }
+tokio-stream = { version = "0.1.15", features = ["net"] }

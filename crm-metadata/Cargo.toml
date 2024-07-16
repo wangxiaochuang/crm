@@ -5,6 +5,10 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = []
+test_utils = []
+
 [dependencies]
 anyhow = { workspace = true }
 chrono = { workspace = true }
@@ -18,7 +22,7 @@ serde = { workspace = true }
 serde_yaml = { workspace = true }
 sqlx = { workspace = true }
 tokio = { workspace = true }
-tokio-stream = "0.1.15"
+tokio-stream = { workspace = true }
 tonic = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
@@ -31,3 +35,5 @@ tonic-build = { workspace = true }
 
 [dev-dependencies]
 nanoid = { workspace = true }
+crm-metadata = { workspace = true, features = ["test_utils"] }
+tokio-stream = { workspace = true }
