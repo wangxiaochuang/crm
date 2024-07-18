@@ -9,9 +9,6 @@ use chrono::{Duration, Utc};
 use crm_metadata::pb::MaterializeRequest;
 use crm_send::pb::SendRequest;
 use futures::StreamExt;
-use tokio::sync::mpsc;
-use tokio_stream::wrappers::ReceiverStream;
-use tracing::warn;
 use user_stat::pb::QueryRequest;
 
 impl AppState {
@@ -20,7 +17,7 @@ impl AppState {
         let d1 = Utc::now() - Duration::days(req.interval as _);
         let d2 = d1 + Duration::days(1);
         let query = QueryRequest::new_with_dt("created_at", d1, d2);
-        let mut res_user_stats = self.user_stats.clone().query(query).await?.into_inner();
+        let res_user_stats = self.user_stats.clone().query(query).await?.into_inner();
 
         let contents = self
             .metadata
@@ -33,26 +30,29 @@ impl AppState {
             .await;
         let contents = Arc::new(contents);
 
+        // let (tx, rx) = mpsc::channel(1024);
+        // tokio::spawn(async move {
+        //     let sender = sender.clone();
+        //     while let Some(Ok(user)) = res_user_stats.next().await {
+        //         let req =
+        //             SendRequest::new("Welcome".to_string(), &sender, &[user.email], &contents);
+        //         if let Err(e) = tx.send(req).await {
+        //             warn!("Failed to send message: {:?}", e);
+        //         }
+        //     }
+        // });
+        // let reqs = ReceiverStream::new(rx);
         let sender = self.config.server.sender_email.clone();
 
-        let (tx, rx) = mpsc::channel(1024);
-        tokio::spawn(async move {
+        let reqs = res_user_stats.filter_map(move |v| {
             let sender = sender.clone();
-            while let Some(Ok(user)) = res_user_stats.next().await {
-                let req =
-                    SendRequest::new("Welcome".to_string(), &sender, &[user.email], &contents);
-                if let Err(e) = tx.send(req).await {
-                    warn!("Failed to send message: {:?}", e);
-                }
+            let contents = contents.clone();
+            async move {
+                v.ok().map(|user| {
+                    SendRequest::new("Welcome".to_string(), sender, &[user.email], &contents)
+                })
             }
         });
-        let reqs = ReceiverStream::new(rx);
-        // let reqs = res_user_stats.filter_map(move |v| async {
-        //     let sender = sender.clone();
-        //     v.ok().map(|user| {
-        //         SendRequest::new("Welcome".to_string(), &sender, &[user.email], &contents)
-        //     })
-        // });
         self.notification.clone().send(reqs).await?;
         Ok(WelcomeResponse { id: request_id })
     }

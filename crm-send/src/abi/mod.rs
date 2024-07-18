@@ -53,12 +53,17 @@ impl AppState {
 }
 
 impl SendRequest {
-    pub fn new(subject: String, sender: &str, recipients: &[String], contents: &[Content]) -> Self {
+    pub fn new(
+        subject: String,
+        sender: String,
+        recipients: &[String],
+        contents: &[Content],
+    ) -> Self {
         let tpl = Tpl(contents);
         let msg = Msg::Email(EmailMessage {
             message_id: Uuid::new_v4().to_string(),
             subject,
-            sender: sender.into(),
+            sender,
             recipients: recipients.to_vec(),
             body: tpl.to_body(),
         });
