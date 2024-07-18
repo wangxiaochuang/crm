@@ -7,16 +7,17 @@ edition = "2021"
 
 [features]
 default = []
-test_utils = ["uuid"]
+test_utils = []
 
 [dependencies]
 anyhow = { workspace = true }
 chrono = { workspace = true }
-derive_builder = "0.20.0"
+derive_builder = { workspace = true }
 futures = { workspace = true }
 itertools = "0.12.1"
 prost = { workspace = true }
-uuid = { workspace = true, optional = true }
+crm-metadata = { workspace = true }
+uuid = { workspace = true }
 prost-types = { workspace = true }
 rand = "0.8.5"
 serde = { workspace = true }

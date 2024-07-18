@@ -1,0 +1,6 @@
+server:
+  port: 50000
+  sender_email: crm@gmail.com
+  user_stats: http://localhost:50001
+  metadata: http://localhost:50002
+  notification: http://localhost:50003

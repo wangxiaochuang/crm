@@ -13,7 +13,7 @@ test_utils = []
 anyhow = { workspace = true }
 chrono = { workspace = true }
 derive_builder = "0.20.0"
-futures = "0.3.30"
+futures = { workspace = true }
 itertools = "0.12.1"
 prost = { workspace = true }
 prost-types = { workspace = true }

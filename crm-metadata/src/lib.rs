@@ -3,7 +3,7 @@ use std::{ops::Deref, pin::Pin, sync::Arc};
 mod abi;
 mod config;
 pub mod pb;
-
+pub use abi::Tpl;
 use anyhow::anyhow;
 pub use config::AppConfig;
 use futures::{Stream, TryStreamExt};

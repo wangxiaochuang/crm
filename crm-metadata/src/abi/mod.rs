@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::{
     pb::{Content, MaterializeRequest, Publisher},
     AppState,
@@ -8,7 +10,7 @@ use fake::{
     faker::{chrono::en::DateTimeBetween, lorem::en::Sentence, name::en::Name},
     Fake, Faker,
 };
-use futures::{Stream, StreamExt};
+use futures::{stream, Stream, StreamExt};
 use prost_types::Timestamp;
 use rand::Rng;
 use tokio::sync::mpsc;
@@ -50,6 +52,25 @@ impl Content {
             likes: rng.gen_range(1234..100000),
             dislikes: rng.gen_range(123..10000),
         }
+    }
+}
+
+pub struct Tpl<'a>(pub &'a [Content]);
+
+impl<'a> Tpl<'a> {
+    pub fn to_body(&self) -> String {
+        format!("Tpl: {:?}", self.0)
+    }
+}
+
+impl MaterializeRequest {
+    pub fn new_with_ids(ids: &[u32]) -> impl Stream<Item = Self> {
+        stream::iter(
+            ids.iter()
+                .copied()
+                .map(|id| Self { id })
+                .collect::<HashSet<_>>(),
+        )
     }
 }
 

@@ -35,8 +35,8 @@ async fn query_should_work() -> Result<()> {
     let (_tdb, addr) = start_server().await?;
     let mut client = UserStatsClient::connect(format!("http://{addr}")).await?;
     let req = QueryRequestBuilder::default()
-        .timestamp(("created_at".to_string(), tq(Some(120), None)))
-        .timestamp(("last_visited_at".to_string(), tq(Some(30), None)))
+        .timestamp(("created_at".to_string(), tq(Some(1200), None)))
+        .timestamp(("last_visited_at".to_string(), tq(Some(3000), None)))
         .id(("viewed_but_not_started".to_string(), id(&[232939])))
         .build()
         .unwrap();

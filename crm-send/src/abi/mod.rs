@@ -5,15 +5,17 @@ mod sms;
 use anyhow::Result as MyResult;
 use anyhow::Result;
 use chrono::Utc;
+use crm_metadata::{pb::Content, Tpl};
 use futures::{Stream, StreamExt};
 use prost_types::Timestamp;
 use std::time::Duration;
 use tokio::{sync::mpsc, time::sleep};
 use tokio_stream::wrappers::ReceiverStream;
 use tracing::{info, warn};
+use uuid::Uuid;
 
 use crate::{
-    pb::{send_request::Msg, SendRequest, SendResponse},
+    pb::{send_request::Msg, EmailMessage, SendRequest, SendResponse},
     AppState,
 };
 
@@ -47,6 +49,21 @@ impl AppState {
         });
 
         ReceiverStream::new(rx)
+    }
+}
+
+impl SendRequest {
+    pub fn new(subject: String, sender: &str, recipients: &[String], contents: &[Content]) -> Self {
+        let tpl = Tpl(contents);
+        let msg = Msg::Email(EmailMessage {
+            message_id: Uuid::new_v4().to_string(),
+            subject,
+            sender: sender.into(),
+            recipients: recipients.to_vec(),
+            body: tpl.to_body(),
+        });
+
+        SendRequest { msg: Some(msg) }
     }
 }
 
